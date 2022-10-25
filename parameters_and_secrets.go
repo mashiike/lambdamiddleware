@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -22,6 +23,8 @@ type ParametersAndSecretsConfig struct {
 	ExtentionHTTPPort int
 	Client            *http.Client
 	ContextKeyFunc    func(key string) interface{}
+	SetEnv            bool
+	EnvPrefix         string
 	withDecryption    *bool
 }
 
@@ -68,6 +71,12 @@ func ParametersAndSecrets(cfg *ParametersAndSecretsConfig) (Middleware, error) {
 	sessionToken := os.Getenv("AWS_SESSION_TOKEN")
 	if sessionToken == "" {
 		return nil, errors.New("AWS_SESSION_TOKEN not set")
+	}
+	if cfg.SetEnv {
+		_, err := fetchParametersAndSecrets(context.Background(), sessionToken, cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return func(next lambda.Handler) lambda.Handler {
 		return HandlerFunc(func(ctx context.Context, payload []byte) ([]byte, error) {
@@ -125,6 +134,11 @@ func fetchParametersAndSecrets(ctx context.Context, sessionToken string, cfg *Pa
 	}
 	m.Range(func(key, value interface{}) bool {
 		ctx = context.WithValue(ctx, cfg.ContextKeyFunc(key.(string)), value.(string))
+		if cfg.SetEnv {
+			parts := strings.Split(key.(string), "/")
+			envKey := strings.ToUpper(cfg.EnvPrefix + parts[len(parts)-1])
+			os.Setenv(envKey, value.(string))
+		}
 		return true
 	})
 	return ctx, nil

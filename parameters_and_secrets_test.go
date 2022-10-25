@@ -38,7 +38,7 @@ func TestParametersAndSecrets(t *testing.T) {
 				DataType:         aws.String("text"),
 				LastModifiedDate: aws.Time(time.Now()),
 				Type:             types.ParameterTypeString,
-				Value:            aws.String("dummy_value"),
+				Value:            aws.String(name + "_dummy_value"),
 				Version:          1,
 			},
 		}
@@ -84,10 +84,11 @@ func TestParametersAndSecrets(t *testing.T) {
 				require.EqualValues(t, `"hoge"`, string(payload))
 				return map[string]interface{}{
 					"hoge": ctx.Value("ssm:hoge"),
+					"fuga": ctx.Value("ssm:fuga"),
 				}, nil
 			},
 			payload: []byte(`"hoge"`),
-			output:  `{"hoge":"dummy_value"}`,
+			output:  `{"hoge":"hoge_dummy_value","fuga":"fuga_dummy_value"}`,
 		},
 		{
 			casename:     "invalid session token",
@@ -103,10 +104,30 @@ func TestParametersAndSecrets(t *testing.T) {
 				require.EqualValues(t, `"hoge"`, string(payload))
 				return map[string]interface{}{
 					"hoge": ctx.Value("ssm:hoge"),
+					"fuga": ctx.Value("ssm:fuga"),
 				}, nil
 			},
 			payload:   []byte(`"hoge"`),
 			errString: "HTTP Status 401: 401 Unauthorized",
+		},
+		{
+			casename:     "success with set env",
+			sessionToken: "SessionToken",
+			cfg: &lambdamiddleware.ParametersAndSecretsConfig{
+				ExtentionHTTPPort: int(port),
+				Names:             []string{"hoge", "fuga"},
+				SetEnv:            true,
+				EnvPrefix:         "SSM_",
+			},
+			handler: func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
+				require.EqualValues(t, `"hoge"`, string(payload))
+				return map[string]interface{}{
+					"hoge": os.Getenv("SSM_HOGE"),
+					"fuga": os.Getenv("SSM_FUGA"),
+				}, nil
+			},
+			payload: []byte(`"hoge"`),
+			output:  `{"hoge":"hoge_dummy_value","fuga":"fuga_dummy_value"}`,
 		},
 	}
 	for i, c := range cases {
