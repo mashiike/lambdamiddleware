@@ -13,7 +13,9 @@ import (
 
 func main() {
 	paramsAndSecrets, err := lambdamiddleware.ParametersAndSecrets(&lambdamiddleware.ParametersAndSecretsConfig{
-		Names: strings.Split(os.Getenv("SSMNAMES"), ","),
+		Names:     strings.Split(os.Getenv("SSMNAMES"), ","),
+		EnvPrefix: "SSM_",
+		SetEnv:    true,
 	})
 	if err != nil {
 		log.Fatalln(err)
@@ -21,9 +23,11 @@ func main() {
 	lambda.Start(lambdamiddleware.NewStack(paramsAndSecrets).Then(
 		func(ctx context.Context, payload json.RawMessage) (interface{}, error) {
 			return map[string]interface{}{
-				"foo":  ctx.Value("/lambdamiddleware-examples/foo"),
-				"bar":  ctx.Value("/lambdamiddleware-examples/bar"),
-				"tora": ctx.Value("/lambdamiddleware-examples/tora"),
+				"env_foo": os.Getenv("SSM_FOO"),
+				"env_bar": os.Getenv("SSM_BAR"),
+				"foo":     ctx.Value("/lambdamiddleware-examples/foo"),
+				"bar":     ctx.Value("/lambdamiddleware-examples/bar"),
+				"tora":    ctx.Value("/lambdamiddleware-examples/tora"),
 			}, nil
 		},
 	))

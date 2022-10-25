@@ -72,12 +72,6 @@ func ParametersAndSecrets(cfg *ParametersAndSecretsConfig) (Middleware, error) {
 	if sessionToken == "" {
 		return nil, errors.New("AWS_SESSION_TOKEN not set")
 	}
-	if cfg.SetEnv {
-		_, err := fetchParametersAndSecrets(context.Background(), sessionToken, cfg)
-		if err != nil {
-			return nil, err
-		}
-	}
 	return func(next lambda.Handler) lambda.Handler {
 		return HandlerFunc(func(ctx context.Context, payload []byte) ([]byte, error) {
 			ctx, err := fetchParametersAndSecrets(ctx, sessionToken, cfg)
