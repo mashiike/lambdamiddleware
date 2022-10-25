@@ -11,11 +11,14 @@ import (
 	"github.com/mashiike/lambdamiddleware"
 )
 
+type ssmContextKey string
+
 func main() {
 	paramsAndSecrets, err := lambdamiddleware.ParametersAndSecrets(&lambdamiddleware.ParametersAndSecretsConfig{
-		Names:     strings.Split(os.Getenv("SSMNAMES"), ","),
-		EnvPrefix: "SSM_",
-		SetEnv:    true,
+		Names:          strings.Split(os.Getenv("SSMNAMES"), ","),
+		ContextKeyFunc: func(key string) interface{} { return ssmContextKey(key) },
+		EnvPrefix:      "SSM_",
+		SetEnv:         true,
 	})
 	if err != nil {
 		log.Fatalln(err)
@@ -25,9 +28,9 @@ func main() {
 			return map[string]interface{}{
 				"env_foo": os.Getenv("SSM_FOO"),
 				"env_bar": os.Getenv("SSM_BAR"),
-				"foo":     ctx.Value("/lambdamiddleware-examples/foo"),
-				"bar":     ctx.Value("/lambdamiddleware-examples/bar"),
-				"tora":    ctx.Value("/lambdamiddleware-examples/tora"),
+				"foo":     ctx.Value(ssmContextKey("/lambdamiddleware-examples/foo")),
+				"bar":     ctx.Value(ssmContextKey("/lambdamiddleware-examples/bar")),
+				"tora":    ctx.Value(ssmContextKey("/lambdamiddleware-examples/tora")),
 			}, nil
 		},
 	))
