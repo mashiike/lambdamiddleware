@@ -1,4 +1,4 @@
-package lambdamiddleware_test
+package lambdamiddleware
 
 import (
 	"context"
@@ -9,14 +9,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"testing"
-	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
-	"github.com/aws/aws-sdk-go-v2/service/ssm/types"
-	"github.com/mashiike/lambdamiddleware"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,15 +25,9 @@ func TestParametersAndSecrets(t *testing.T) {
 			return
 		}
 		name := r.URL.Query().Get("name")
-		output := &ssm.GetParameterOutput{
-			Parameter: &types.Parameter{
-				ARN:              aws.String(fmt.Sprintf("arn:aws:ssm:ap-northeast-1:0123456789012:parameter/%s", strings.TrimPrefix(name, "/"))),
-				Name:             aws.String(name),
-				DataType:         aws.String("text"),
-				LastModifiedDate: aws.Time(time.Now()),
-				Type:             types.ParameterTypeString,
-				Value:            aws.String(name + "_dummy_value"),
-				Version:          1,
+		output := &ssmGetParameterOutput{
+			Parameter: struct{ Value string }{
+				Value: name + "_dummy_value",
 			},
 		}
 		json.NewEncoder(w).Encode(output)
@@ -55,7 +43,7 @@ func TestParametersAndSecrets(t *testing.T) {
 		casename            string
 		sessionToken        string
 		handler             interface{}
-		cfg                 *lambdamiddleware.ParametersAndSecretsConfig
+		cfg                 *ParametersAndSecretsConfig
 		payload             []byte
 		output              string
 		initializeErrString string
@@ -73,7 +61,7 @@ func TestParametersAndSecrets(t *testing.T) {
 		{
 			casename:     "success",
 			sessionToken: "SessionToken",
-			cfg: &lambdamiddleware.ParametersAndSecretsConfig{
+			cfg: &ParametersAndSecretsConfig{
 				ExtentionHTTPPort: int(port),
 				Names:             []string{"hoge", "fuga"},
 				ContextKeyFunc: func(key string) interface{} {
@@ -93,7 +81,7 @@ func TestParametersAndSecrets(t *testing.T) {
 		{
 			casename:     "invalid session token",
 			sessionToken: "InvalidSessionToken",
-			cfg: &lambdamiddleware.ParametersAndSecretsConfig{
+			cfg: &ParametersAndSecretsConfig{
 				ExtentionHTTPPort: int(port),
 				Names:             []string{"hoge", "fuga"},
 				ContextKeyFunc: func(key string) interface{} {
@@ -113,7 +101,7 @@ func TestParametersAndSecrets(t *testing.T) {
 		{
 			casename:     "success with set env",
 			sessionToken: "SessionToken",
-			cfg: &lambdamiddleware.ParametersAndSecretsConfig{
+			cfg: &ParametersAndSecretsConfig{
 				ExtentionHTTPPort: int(port),
 				Names:             []string{"hoge", "fuga"},
 				SetEnv:            true,
@@ -133,7 +121,7 @@ func TestParametersAndSecrets(t *testing.T) {
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("case.%d:%s", i+1, c.casename), func(t *testing.T) {
 			os.Setenv("AWS_SESSION_TOKEN", c.sessionToken)
-			h, err := lambdamiddleware.WrapParametersAndSecrets(c.handler, c.cfg)
+			h, err := WrapParametersAndSecrets(c.handler, c.cfg)
 			if c.initializeErrString == "" {
 				require.NoError(t, err)
 			} else {
