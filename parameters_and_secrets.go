@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go-v2/service/ssm"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -83,6 +82,12 @@ func ParametersAndSecrets(cfg *ParametersAndSecretsConfig) (Middleware, error) {
 	}, nil
 }
 
+type ssmGetParameterOutput struct {
+	Parameter struct {
+		Value string
+	}
+}
+
 func fetchParametersAndSecrets(ctx context.Context, sessionToken string, cfg *ParametersAndSecretsConfig) (context.Context, error) {
 	eg, egctx := errgroup.WithContext(ctx)
 	var m sync.Map
@@ -115,11 +120,11 @@ func fetchParametersAndSecrets(ctx context.Context, sessionToken string, cfg *Pa
 				return fmt.Errorf("HTTP Status %d: %s", resp.StatusCode, resp.Status)
 			}
 			decoder := json.NewDecoder(resp.Body)
-			var output ssm.GetParameterOutput
+			var output ssmGetParameterOutput
 			if err := decoder.Decode(&output); err != nil {
 				return err
 			}
-			m.Store(_name, *output.Parameter.Value)
+			m.Store(_name, output.Parameter.Value)
 			return nil
 		})
 	}
