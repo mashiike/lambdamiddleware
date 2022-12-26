@@ -3,7 +3,7 @@ module github.com/mashiike/lambdamiddleware
 go 1.17
 
 require (
-	github.com/aws/aws-lambda-go v1.34.1
+	github.com/aws/aws-lambda-go v1.36.1
 	github.com/stretchr/testify v1.7.2
 	golang.org/x/sync v0.1.0
 )
